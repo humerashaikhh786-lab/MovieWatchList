@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MovieWatchList</title>
+    <link rel="icon" type="image/png" href="/favicon.png?v=3">
+    <link rel="stylesheet" href="/style.css?v=3">
+</head>
+
+<body>
+
+<header class="navbar">
+    <a class="brand" href="/">
+        <img src="/favicon.png?v=3" alt="">
+        <span>MovieWatchList</span>
+    </a>
+
+    <nav>
+        <a href="#home">Home</a>
+        <a href="#discover">Movies</a>
+        <a href="#discover">TV Shows</a>
+        <a href="#watchlist">To Watch</a>
+        <a href="#watched">Watched</a>
+        <a href="#favorites">Favourites</a>
+        <a href="/about.html">About</a>
+    </nav>
+
+</header>
+
+<main id="home">
+
+    <section class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow">YOUR PERSONAL CINEMA</p>
+            <h1>Find something<br><span>worth watching.</span></h1>
+            <p class="hero-text">
+                Search movies and TV shows, discover their details, check legal
+                free or paid viewing options, and build your personal watchlist.
+            </p>
+            <div class="hero-actions">
+                <a class="primary-btn" href="#discover">⌕ Start Discovering</a>
+                <a class="secondary-btn" href="#watchlist">♡ To Watch</a>
+            </div>
+        </div>
+        <div class="hero-orbit">
+            <img class="hero-cinema-art" src="/imgmovie.png?v=4" alt="Cinematic MovieWatchList artwork">
+        </div>
+    </section>
+
+    <section class="stats" id="stats">
+        <div class="stat-card"><span>Total</span><strong id="totalMovies">0</strong><small>saved titles</small></div>
+        <div class="stat-card"><span>Watched</span><strong id="watchedMovies">0</strong><small>completed</small></div>
+        <div class="stat-card"><span>To Watch</span><strong id="unwatchedMovies">0</strong><small>on your list</small></div>
+        <div class="stat-card"><span>Average</span><strong id="averageRating">0</strong><small>your ratings</small></div>
+    </section>
+
+    <section class="discover-section" id="discover">
+        <div class="section-title">
+            <div>
+                <p class="eyebrow">DISCOVER</p>
+                <h2>Search the world of cinema</h2>
+            </div>
+            <div class="type-toggle">
+                <button class="type-btn active" data-search-type="movie">Movies</button>
+                <button class="type-btn" data-search-type="tv">TV Shows</button>
+            </div>
+        </div>
+
+        <div class="big-search">
+            <span class="search-icon">⌕</span>
+            <input id="search" type="text" placeholder="Search for a movie or TV show..." autocomplete="off">
+            <button id="clearSearch" class="clear-search hidden" type="button" title="Clear search" aria-label="Clear search">×</button>
+            <button id="searchButton">Search</button>
+        </div>
+
+        <div id="searchHistory" class="history-wrap hidden">
+            <div class="history-head">
+                <span>Recent searches</span>
+                <button id="clearHistory">Clear</button>
+            </div>
+            <div id="historyList"></div>
+        </div>
+
+        <div id="searchMessage" class="empty-state">
+            <div class="empty-icon">✦</div>
+            <h3>Nothing here yet</h3>
+            <p>Search for a title to discover movies and TV shows.</p>
+        </div>
+
+        <div id="movieContainer" class="poster-grid"></div>
+    </section>
+
+    <section id="watchlist" class="library-section watchlist-section">
+        <div class="section-title library-heading">
+            <div>
+                <p class="eyebrow">YOUR COLLECTION</p>
+                <h2>To Watch</h2>
+                <p class="collection-subtitle">Movies <span>•</span> TV Shows <span>•</span> Series</p>
+            </div>
+        </div>
+        <div id="toWatchGrid" class="poster-grid"></div>
+        <div id="toWatchEmpty" class="compact-empty">Nothing waiting to be watched yet.</div>
+    </section>
+
+    <section id="watched" class="library-section collection-section">
+        <div class="section-title library-heading">
+            <div>
+                <p class="eyebrow">YOUR COLLECTION</p>
+                <h2>Watched</h2>
+                <p class="collection-subtitle">Movies <span>•</span> TV Shows <span>•</span> Series</p>
+            </div>
+        </div>
+        <div id="watchedGrid" class="poster-grid"></div>
+        <div id="watchedEmpty" class="compact-empty">No watched titles yet.</div>
+    </section>
+
+    <section id="favorites" class="library-section collection-section">
+        <div class="section-title library-heading">
+            <div>
+                <p class="eyebrow">YOUR COLLECTION</p>
+                <h2>Favourites</h2>
+                <p class="collection-subtitle">Movies <span>•</span> TV Shows <span>•</span> Series</p>
+            </div>
+        </div>
+        <div id="favoritesGrid" class="poster-grid"></div>
+        <div id="favoritesEmpty" class="compact-empty">No favourite titles yet.</div>
+    </section>
+
+</main>
+
+<footer>
+    <span>🎬 MovieWatchList</span>
+    <span>Discover • Save • Watch</span>
+</footer>
+
+<div id="watchModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="watch-dialog">
+        <button id="closeModal" class="close-btn">×</button>
+        <div id="watchContent"></div>
+    </div>
+</div>
+
+<div id="movieDetailModal" class="detail-modal hidden">
+    <div class="detail-backdrop"></div>
+    <div class="detail-page">
+        <button id="closeDetail" class="detail-close" type="button" aria-label="Close details">×</button>
+        <div id="detailContent"></div>
+    </div>
+</div>
+
+<script src="/script.js?v=4"></script>
+</body>
+</html>
