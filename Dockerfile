@@ -3,3 +3,4 @@ WORKDIR /app
 COPY src ./src
 COPY web ./web
 RUN mkdir out && javac -d out src/*.java
+CMD ["java", "-cp", "out", "MovieServer"]
