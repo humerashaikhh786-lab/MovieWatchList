@@ -23,7 +23,12 @@ public class MovieServer {
 
     public static void main(String[] args) throws Exception {
 
-        HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+        // Render provides the PORT environment variable.
+        int port = Integer.parseInt(
+                System.getenv().getOrDefault("PORT", "8080")
+        );
+
+        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
         server.createContext("/", MovieServer::handleHome);
         server.createContext("/about.html", MovieServer::handleAbout);
@@ -40,13 +45,24 @@ public class MovieServer {
         System.out.println("--------------------------------------");
         System.out.println(" MovieWatchList Server Started");
         System.out.println("--------------------------------------");
-        System.out.println("Open: http://localhost:8080");
+        System.out.println("Server running on port: " + port);
         System.out.println("--------------------------------------");
 
         server.start();
     }
 
     private static String loadApiKey() {
+
+        // First try environment variable.
+        // This is what Render will use.
+        String envKey = System.getenv("TMDB_API_KEY");
+
+        if (envKey != null && !envKey.isBlank()) {
+            return envKey.trim();
+        }
+
+        // If no environment variable exists,
+        // try the local .env file.
         Path env = Paths.get(".env");
 
         try {
@@ -65,11 +81,12 @@ public class MovieServer {
                     }
                 }
             }
+
         } catch (IOException e) {
             throw new RuntimeException("Could not read .env file.", e);
         }
 
-        throw new RuntimeException("TMDB_API_KEY not found in .env file.");
+        throw new RuntimeException("TMDB_API_KEY not found.");
     }
 
     // =========================================================
@@ -223,6 +240,7 @@ public class MovieServer {
         String action = formValue(body, "action");
 
         Movie movie = WATCHLIST.findMovie(id);
+
         if (movie == null) {
             sendResponse(exchange, 404, "{\"error\":\"Title not found\"}", "application/json");
             return;
