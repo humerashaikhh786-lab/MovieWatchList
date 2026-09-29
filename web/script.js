@@ -338,6 +338,83 @@ async function loadSearchCardDetails(card, item, type) {
     card.querySelector(".favorite-btn").addEventListener("click", () => addToWatchlist(titleData, false, true));
 }
 
+async function loadTrending(type = "movie") {
+    const section = document.getElementById("trendingSection");
+    const row = document.getElementById("trendingRow");
+
+    if (!section || !row) return;
+
+    try {
+        const response = await fetch(`/api/trending?type=${encodeURIComponent(type)}`);
+
+        if (!response.ok) {
+            throw new Error("Trending request failed");
+        }
+
+        const data = await response.json();
+        const results = Array.isArray(data.results) ? data.results.slice(0, 12) : [];
+
+        if (!results.length) {
+            section.hidden = true;
+            row.innerHTML = "";
+            return;
+        }
+
+        row.innerHTML = "";
+
+        results.forEach(item => {
+            const card = document.createElement("article");
+            card.className = "poster-card cinematic-card";
+
+            const itemType = item.media_type === "tv" ? "tv" : type;
+            const title = titleOf(item, itemType);
+            const year = yearOf(item, itemType);
+            const rating = Number(item.vote_average || 0);
+            const poster = posterUrl(item.poster_path);
+
+            card.innerHTML = `
+                <div class="poster-wrap poster-clickable" title="Open full details">
+                    ${poster ? `<img src="${poster}" alt="${escapeHtml(title)}" loading="lazy">` : `<div class="no-poster">&#10022;</div>`}
+                    <span class="type-badge">${itemType === "tv" ? "TV Series" : "Movie"}</span>
+                </div>
+                <div class="poster-body">
+                    <h3>${escapeHtml(title)}</h3>
+                    <div class="meta">${escapeHtml(year)}</div>
+                    <div class="rating">&#9733; ${rating.toFixed(1)}/10</div>
+                </div>
+            `;
+
+            row.appendChild(card);
+
+            fetchDetails(item.id, itemType)
+                .then(details => {
+                    const titleData = buildTitleData(details, item, itemType);
+
+                    card.querySelector(".poster-wrap")?.addEventListener(
+                        "click",
+                        () => openDetailPage(titleData)
+                    );
+                })
+                .catch(error => {
+                    console.error("Trending details error:", error);
+
+                    const titleData = buildTitleData(item, item, itemType);
+
+                    card.querySelector(".poster-wrap")?.addEventListener(
+                        "click",
+                        () => openDetailPage(titleData)
+                    );
+                });
+        });
+
+        section.hidden = false;
+
+    } catch (error) {
+        console.error("Trending error:", error);
+        section.hidden = true;
+        row.innerHTML = "";
+    }
+}
 function findSavedByTmdb(titleData) {
     return savedMovies.find(item =>
         Number(item.tmdbId) === Number(titleData.tmdbId) && item.type === titleData.type
@@ -380,6 +457,7 @@ async function addToWatchlist(titleData, watched = false, favorite = false) {
         const response = await fetch("/api/movies", { method: "POST", body: data });
         if (!response.ok) throw new Error("Add failed");
         await loadWatchlist();
+
         document.querySelectorAll(".poster-card").forEach(card => {
             const heading = card.querySelector("h3");
             if (heading && heading.textContent.trim() === titleData.title) {
@@ -401,6 +479,7 @@ async function performAction(id, action) {
         const response = await fetch("/api/movies/action", { method: "POST", body: data });
         if (!response.ok) throw new Error("Action failed");
         await loadWatchlist();
+
     } catch (error) {
         console.error(error);
         alert("Could not update this title.");
@@ -531,6 +610,7 @@ async function deleteTitle(id, title) {
         const response = await fetch(`/api/movies?id=${id}`, { method: "DELETE" });
         if (!response.ok) throw new Error("Delete failed");
         await loadWatchlist();
+
     } catch (error) {
         console.error(error);
         alert("Could not remove title.");
@@ -905,6 +985,8 @@ document.getElementById("clearHistory").addEventListener("click", () => {
 renderHistory();
 updateClearSearchButton();
 loadWatchlist();
+loadTrending("movie");
+
 
 document.addEventListener("keydown", event => {
     if (event.key === "Escape") {

@@ -1,4 +1,4 @@
-* {
+﻿* {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -1497,4 +1497,128 @@ body.detail-open { overflow: hidden; }
 
 .collection-section {
     margin-bottom: 72px;
+}
+/* =========================================
+   CINEMATIC CONTENT ROW FOUNDATION
+   Added without changing existing components
+   ========================================= */
+
+.cinematic-row {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(200px, 230px);
+    gap: 22px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 10px 4px 22px;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scroll-snap-type: x proximity;
+}
+
+.cinematic-row::-webkit-scrollbar {
+    height: 6px;
+}
+
+.cinematic-row::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.cinematic-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.22);
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    scroll-snap-align: start;
+}
+
+.cinematic-card:hover {
+    transform: translateY(-7px);
+    border-color: rgba(124, 92, 255, 0.65);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.3);
+}
+
+.cinematic-card img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    transition: transform 0.4s ease, filter 0.4s ease;
+}
+
+.cinematic-card:hover img {
+    transform: scale(1.04);
+    filter: brightness(1.06);
+}
+/* Trending card typography */
+.cinematic-card .poster-body {
+    padding: 14px 14px 16px;
+}
+
+.cinematic-card .poster-body h3 {
+    font-size: 15px;
+    line-height: 1.35;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cinematic-card .poster-body .meta {
+    font-size: 12px;
+    opacity: 0.68;
+    margin-bottom: 7px;
+}
+
+.cinematic-card .poster-body .rating {
+    font-size: 13px;
+    font-weight: 600;
+}
+.cinematic-card .type-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: rgba(8, 12, 22, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    backdrop-filter: blur(8px);
+}
+
+
+
+
+
+
+@media (max-width: 520px) {
+    .cinematic-row {
+        grid-auto-columns: minmax(150px, 165px);
+        gap: 12px;
+        padding-bottom: 16px;
+    }
+
+    .cinematic-card {
+        border-radius: 15px;
+    }
+
+    .cinematic-card .poster-body {
+        padding: 11px 11px 13px;
+    }
+
+    .cinematic-card .poster-body h3 {
+        font-size: 13px;
+    }
+
+    .cinematic-card .poster-body .meta,
+    .cinematic-card .poster-body .rating {
+        font-size: 11px;
+    }
 }

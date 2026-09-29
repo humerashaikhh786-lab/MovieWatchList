@@ -36,6 +36,7 @@ public class MovieServer {
         server.createContext("/api/movies/action", MovieServer::handleMovieAction);
         server.createContext("/api/stats", MovieServer::handleStats);
         server.createContext("/api/search", MovieServer::handleSearch);
+        server.createContext("/api/trending", MovieServer::handleTrending);
         server.createContext("/api/movie-details", MovieServer::handleDetails);
         server.createContext("/api/watch-providers", MovieServer::handleWatchProviders);
         server.createContext("/api/person-details", MovieServer::handlePersonDetails);
@@ -316,6 +317,36 @@ public class MovieServer {
     }
 
     // =========================================================
+    // =========================================================
+    // TMDB TRENDING
+    // =========================================================
+
+    private static void handleTrending(HttpExchange exchange) throws IOException {
+
+        try {
+            String type = getQueryParameter(exchange.getRequestURI().getQuery(), "type");
+
+            if ("tv".equalsIgnoreCase(type)) {
+                sendResponse(exchange, 200, trendingTMDB("tv"), "application/json");
+            } else {
+                sendResponse(exchange, 200, trendingTMDB("movie"), "application/json");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendResponse(exchange, 500, "{\"error\":\"TMDB trending failed\"}", "application/json");
+        }
+    }
+
+    private static String trendingTMDB(String type) throws Exception {
+
+        String url = "https://api.themoviedb.org/3/trending/" + type
+                + "/week"
+                + "?api_key=" + URLEncoder.encode(TMDB_API_KEY, StandardCharsets.UTF_8)
+                + "&language=en-US";
+
+        return tmdbRequest(url);
+    }
     // TMDB DETAILS
     // =========================================================
 
