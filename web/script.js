@@ -338,31 +338,62 @@ async function loadSearchCardDetails(card, item, type) {
     card.querySelector(".favorite-btn").addEventListener("click", () => addToWatchlist(titleData, false, true));
 }
 
+let trendingPage = 0;
+let trendingItems = [];
+const TRENDING_MAX = Infinity;
+
 async function loadTrending(type = "movie") {
     const section = document.getElementById("trendingSection");
     const row = document.getElementById("trendingRow");
 
     if (!section || !row) return;
 
+    const nextPage = trendingPage + 1;
+
     try {
-        const response = await fetch(`/api/trending?type=${encodeURIComponent(type)}`);
+        const response = await fetch(
+            `/api/trending?type=${encodeURIComponent(type)}&page=${nextPage}`
+        );
 
         if (!response.ok) {
             throw new Error("Trending request failed");
         }
 
         const data = await response.json();
-        const results = Array.isArray(data.results) ? data.results.slice(0, 12) : [];
+        const results = Array.isArray(data.results) ? data.results : [];
 
         if (!results.length) {
-            section.hidden = true;
-            row.innerHTML = "";
+            section.hidden = trendingItems.length === 0;
+
+            const loadMoreButton = document.getElementById("loadMoreTrendingBtn");
+            if (loadMoreButton) {
+                loadMoreButton.hidden = trendingItems.length >= TRENDING_MAX;
+            }
             return;
         }
 
-        row.innerHTML = "";
+        const existingIds = new Set(
+            trendingItems.map(item => `${item.media_type || type}-${item.id}`)
+        );
 
-        results.forEach(item => {
+        const uniqueResults = results.filter(item => {
+            const key = `${item.media_type || type}-${item.id}`;
+
+            if (existingIds.has(key)) {
+                return false;
+            }
+
+            existingIds.add(key);
+            return true;
+        });
+
+        const remaining = TRENDING_MAX - trendingItems.length;
+        const newItems = uniqueResults.slice(0, remaining);
+
+        trendingItems.push(...newItems);
+        trendingPage = nextPage;
+
+        newItems.forEach(item => {
             const card = document.createElement("article");
             card.className = "poster-card cinematic-card";
 
@@ -381,14 +412,31 @@ async function loadTrending(type = "movie") {
                     <h3>${escapeHtml(title)}</h3>
                     <div class="meta">${escapeHtml(year)}</div>
                     <div class="rating">&#9733; ${rating.toFixed(1)}/10</div>
+                    <div class="card-actions four-actions">
+                        <button class="watch-btn">&#9654; Watch</button>
+                        <button class="list-btn">&#43; To Watch</button>
+                        <button class="watched-btn">&#10003; Already Watched</button>
+                        <button class="favorite-btn">&#9825; Add to Favorites</button>
+                    </div>
                 </div>
             `;
 
-            row.appendChild(card);
+            const loadMoreWrap = document.querySelector("#trendingRow .load-more-wrap");
+            if (loadMoreWrap) {
+                row.insertBefore(card, loadMoreWrap);
+            } else {
+                row.appendChild(card);
+            }
 
             fetchDetails(item.id, itemType)
                 .then(details => {
                     const titleData = buildTitleData(details, item, itemType);
+
+                    card.querySelector(".watch-btn")?.addEventListener("click", () => openWatchModal(titleData));
+                    card.querySelector(".list-btn")?.addEventListener("click", () => addToWatchlist(titleData, false, false));
+                    card.querySelector(".watched-btn")?.addEventListener("click", () => addToWatchlist(titleData, true, false));
+                    card.querySelector(".favorite-btn")?.addEventListener("click", () => addToWatchlist(titleData, false, true));
+                    updateSearchActionState(card, titleData);
 
                     card.querySelector(".poster-wrap")?.addEventListener(
                         "click",
@@ -400,6 +448,12 @@ async function loadTrending(type = "movie") {
 
                     const titleData = buildTitleData(item, item, itemType);
 
+                    card.querySelector(".watch-btn")?.addEventListener("click", () => openWatchModal(titleData));
+                    card.querySelector(".list-btn")?.addEventListener("click", () => addToWatchlist(titleData, false, false));
+                    card.querySelector(".watched-btn")?.addEventListener("click", () => addToWatchlist(titleData, true, false));
+                    card.querySelector(".favorite-btn")?.addEventListener("click", () => addToWatchlist(titleData, false, true));
+                    updateSearchActionState(card, titleData);
+
                     card.querySelector(".poster-wrap")?.addEventListener(
                         "click",
                         () => openDetailPage(titleData)
@@ -407,12 +461,20 @@ async function loadTrending(type = "movie") {
                 });
         });
 
-        section.hidden = false;
+        section.hidden = trendingItems.length === 0;
+
+            const loadMoreButton = document.getElementById("loadMoreTrendingBtn");
+            if (loadMoreButton) {
+                loadMoreButton.hidden = trendingItems.length >= TRENDING_MAX;
+            }
 
     } catch (error) {
         console.error("Trending error:", error);
-        section.hidden = true;
-        row.innerHTML = "";
+
+        if (trendingItems.length === 0) {
+            section.hidden = true;
+            row.innerHTML = "";
+        }
     }
 }
 function findSavedByTmdb(titleData) {
@@ -987,6 +1049,11 @@ updateClearSearchButton();
 loadWatchlist();
 loadTrending("movie");
 
+
+const loadMoreTrendingBtn = document.getElementById("loadMoreTrendingBtn");
+if (loadMoreTrendingBtn) {
+    loadMoreTrendingBtn.addEventListener("click", () => loadTrending("movie"));
+}
 
 document.addEventListener("keydown", event => {
     if (event.key === "Escape") {

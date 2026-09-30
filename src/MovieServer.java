@@ -323,30 +323,46 @@ public class MovieServer {
 
     private static void handleTrending(HttpExchange exchange) throws IOException {
 
+    try {
+        String query = exchange.getRequestURI().getQuery();
+
+        String type = getQueryParameter(query, "type");
+        String pageParam = getQueryParameter(query, "page");
+
+        int page = 1;
+
         try {
-            String type = getQueryParameter(exchange.getRequestURI().getQuery(), "type");
-
-            if ("tv".equalsIgnoreCase(type)) {
-                sendResponse(exchange, 200, trendingTMDB("tv"), "application/json");
-            } else {
-                sendResponse(exchange, 200, trendingTMDB("movie"), "application/json");
+            if (pageParam != null && !pageParam.isBlank()) {
+                page = Integer.parseInt(pageParam);
             }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            sendResponse(exchange, 500, "{\"error\":\"TMDB trending failed\"}", "application/json");
+        } catch (NumberFormatException ignored) {
+            page = 1;
         }
+
+        page = Math.max(1, page);
+
+        if ("tv".equalsIgnoreCase(type)) {
+            sendResponse(exchange, 200, trendingTMDB("tv", page), "application/json");
+        } else {
+            sendResponse(exchange, 200, trendingTMDB("movie", page), "application/json");
+        }
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        sendResponse(exchange, 500, "{\"error\":\"TMDB trending failed\"}", "application/json");
     }
+}
 
-    private static String trendingTMDB(String type) throws Exception {
+private static String trendingTMDB(String type, int page) throws Exception {
 
-        String url = "https://api.themoviedb.org/3/trending/" + type
-                + "/week"
-                + "?api_key=" + URLEncoder.encode(TMDB_API_KEY, StandardCharsets.UTF_8)
-                + "&language=en-US";
+    String url = "https://api.themoviedb.org/3/trending/" + type
+            + "/week"
+            + "?api_key=" + URLEncoder.encode(TMDB_API_KEY, StandardCharsets.UTF_8)
+            + "&language=en-US"
+            + "&page=" + page;
 
-        return tmdbRequest(url);
-    }
+    return tmdbRequest(url);
+}
     // TMDB DETAILS
     // =========================================================
 
