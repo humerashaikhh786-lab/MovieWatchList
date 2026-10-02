@@ -953,13 +953,38 @@ async function loadActorWorks(personId, panel, button) {
                     const workType = work.media_type || (work.first_air_date ? "tv" : "movie");
                     const workTitle = titleOf(work, workType);
                     const workYear = yearOf(work, workType);
-                    return `<div class="actor-work-item">
+                    return `<div class="actor-work-item" data-tmdb-id="${Number(work.id || 0)}" data-work-type="${escapeHtml(workType)}" role="button" tabindex="0">
                         ${work.poster_path ? `<img src="${posterUrl(work.poster_path)}" alt="" loading="lazy">` : `<div class="actor-work-no-poster">✦</div>`}
                         <div><strong>${escapeHtml(workTitle)}</strong><small>${escapeHtml(workYear)} • ★ ${Number(work.vote_average || 0).toFixed(1)}</small></div>
                     </div>`;
                 }).join("")}
             </div>
         ` : `<div class="actor-work-loading">No additional credited work found.</div>`;
+        panel.querySelectorAll(".actor-work-item").forEach(item => {
+            const openWork = () => {
+                const tmdbId = Number(item.dataset.tmdbId || 0);
+                const workType = item.dataset.workType || "movie";
+                if (!tmdbId) return;
+
+                const titleData = {
+                    tmdbId,
+                    title: item.querySelector("strong")?.textContent || "Unknown",
+                    type: workType
+                };
+
+                closeDetailPage();
+                openDetailPage(titleData);
+            };
+
+            item.addEventListener("click", openWork);
+            item.addEventListener("keydown", event => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openWork();
+                }
+            });
+        });
+
         button.textContent = "Hide their work";
     } catch (error) {
         console.error("Actor work error:", error);
