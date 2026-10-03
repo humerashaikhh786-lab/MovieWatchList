@@ -1,23 +1,16 @@
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 
 public class Watchlist {
-
-    private static final Path DATA_FILE = Paths.get("data", "watchlist.txt");
 
     private final List<Movie> movies = new ArrayList<>();
     private int nextId = 1;
 
     public Watchlist() {
-        loadFromFile();
+        loadFromDatabase();
     }
 
     public Movie addMovie(String title, String genre, int year, double rating,
@@ -39,22 +32,66 @@ public class Watchlist {
             existing.setWatched(existing.isWatched() || watched);
             existing.setFavorite(existing.isFavorite() || favorite);
 
-            saveToFile();
+            save();
             return existing;
         }
 
         Movie movie = new Movie(
-                nextId++, title, genre, year, rating, watched, favorite,
-                imageUrl, description, type, region, seasons, episodes, tmdbId
+                nextId++,
+                title,
+                genre,
+                year,
+                rating,
+                watched,
+                favorite,
+                imageUrl,
+                description,
+                type,
+                region,
+                seasons,
+                episodes,
+                tmdbId
         );
 
-        movies.add(movie);
-        saveToFile();
-        return movie;
+        String sql = """
+            INSERT INTO watchlist
+            (id, title, genre, year, rating, watched, favorite, image_url,
+             description, type, region, seasons, episodes, tmdb_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """;
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, movie.getId());
+            statement.setString(2, movie.getTitle());
+            statement.setString(3, movie.getGenre());
+            statement.setInt(4, movie.getYear());
+            statement.setDouble(5, movie.getRating());
+            statement.setBoolean(6, movie.isWatched());
+            statement.setBoolean(7, movie.isFavorite());
+            statement.setString(8, movie.getImageUrl());
+            statement.setString(9, movie.getDescription());
+            statement.setString(10, movie.getType());
+            statement.setString(11, movie.getRegion());
+            statement.setInt(12, movie.getSeasons());
+            statement.setInt(13, movie.getEpisodes());
+            statement.setInt(14, movie.getTmdbId());
+
+            statement.executeUpdate();
+            movies.add(movie);
+
+            return movie;
+
+        } catch (Exception e) {
+            nextId--;
+            System.err.println("Could not add movie to database: " + e.getMessage());
+            return null;
+        }
     }
 
     public Movie findByTmdbId(int tmdbId, String type) {
-        if (tmdbId <= 0) return null;
+        if (tmdbId <= 0 || type == null) return null;
 
         for (Movie movie : movies) {
             if (movie.getTmdbId() == tmdbId
@@ -67,25 +104,92 @@ public class Watchlist {
     }
 
     public boolean deleteMovie(int id) {
-        boolean deleted = movies.removeIf(movie -> movie.getId() == id);
 
-        if (deleted) {
-            saveToFile();
+        Movie movie = findMovie(id);
+
+        if (movie == null) {
+            return false;
         }
 
-        return deleted;
+        String sql = "DELETE FROM watchlist WHERE id = ?";
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, id);
+
+            int affected = statement.executeUpdate();
+
+            if (affected > 0) {
+                movies.remove(movie);
+                return true;
+            }
+
+        } catch (Exception e) {
+            System.err.println("Could not delete movie from database: " + e.getMessage());
+        }
+
+        return false;
     }
 
     public Movie findMovie(int id) {
         for (Movie movie : movies) {
-            if (movie.getId() == id) return movie;
+            if (movie.getId() == id) {
+                return movie;
+            }
         }
 
         return null;
     }
 
     public void save() {
-        saveToFile();
+
+        String sql = """
+            UPDATE watchlist
+            SET title = ?,
+                genre = ?,
+                year = ?,
+                rating = ?,
+                watched = ?,
+                favorite = ?,
+                image_url = ?,
+                description = ?,
+                type = ?,
+                region = ?,
+                seasons = ?,
+                episodes = ?,
+                tmdb_id = ?
+            WHERE id = ?
+            """;
+
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            for (Movie movie : movies) {
+
+                statement.setString(1, movie.getTitle());
+                statement.setString(2, movie.getGenre());
+                statement.setInt(3, movie.getYear());
+                statement.setDouble(4, movie.getRating());
+                statement.setBoolean(5, movie.isWatched());
+                statement.setBoolean(6, movie.isFavorite());
+                statement.setString(7, movie.getImageUrl());
+                statement.setString(8, movie.getDescription());
+                statement.setString(9, movie.getType());
+                statement.setString(10, movie.getRegion());
+                statement.setInt(11, movie.getSeasons());
+                statement.setInt(12, movie.getEpisodes());
+                statement.setInt(13, movie.getTmdbId());
+                statement.setInt(14, movie.getId());
+
+                statement.addBatch();
+            }
+
+            statement.executeBatch();
+
+        } catch (Exception e) {
+            System.err.println("Could not save watchlist to database: " + e.getMessage());
+        }
     }
 
     public List<Movie> getMovies() {
@@ -113,7 +217,9 @@ public class Watchlist {
     }
 
     public double getAverageRating() {
-        if (movies.isEmpty()) return 0;
+        if (movies.isEmpty()) {
+            return 0;
+        }
 
         double total = 0;
 
@@ -125,181 +231,62 @@ public class Watchlist {
     }
 
     // =========================================================
-    // FILE PERSISTENCE
+    // MYSQL PERSISTENCE
     // =========================================================
 
-    private void loadFromFile() {
+    private void loadFromDatabase() {
 
-        try {
-            Files.createDirectories(DATA_FILE.getParent());
+        String sql = """
+            SELECT id, title, genre, year, rating, watched, favorite,
+                   image_url, description, type, region, seasons,
+                   episodes, tmdb_id
+            FROM watchlist
+            ORDER BY id
+            """;
 
-            if (!Files.exists(DATA_FILE)) {
-                Files.createFile(DATA_FILE);
-                return;
-            }
+        try (Connection connection = Database.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet result = statement.executeQuery()) {
 
-            List<String> lines = Files.readAllLines(DATA_FILE, StandardCharsets.UTF_8);
+            movies.clear();
 
             int highestId = 0;
 
-            for (String line : lines) {
+            while (result.next()) {
 
-                if (line == null || line.isBlank()) {
-                    continue;
-                }
+                int id = result.getInt("id");
 
-                try {
-                    String[] parts = line.split("\\|", -1);
+                Movie movie = new Movie(
+                        id,
+                        result.getString("title"),
+                        result.getString("genre"),
+                        result.getInt("year"),
+                        result.getDouble("rating"),
+                        result.getBoolean("watched"),
+                        result.getBoolean("favorite"),
+                        result.getString("image_url"),
+                        result.getString("description"),
+                        result.getString("type"),
+                        result.getString("region"),
+                        result.getInt("seasons"),
+                        result.getInt("episodes"),
+                        result.getInt("tmdb_id")
+                );
 
-                    if (parts.length != 13) {
-                        continue;
-                    }
-
-                    int id = Integer.parseInt(parts[0]);
-                    String title = decode(parts[1]);
-                    String genre = decode(parts[2]);
-                    int year = Integer.parseInt(parts[3]);
-                    double rating = Double.parseDouble(parts[4]);
-                    boolean watched = Boolean.parseBoolean(parts[5]);
-                    boolean favorite = Boolean.parseBoolean(parts[6]);
-                    String imageUrl = decode(parts[7]);
-                    String description = decode(parts[8]);
-                    String type = decode(parts[9]);
-                    String region = decode(parts[10]);
-                    int seasons = Integer.parseInt(parts[11]);
-                    int episodes = Integer.parseInt(parts[12]);
-
-                    // tmdbId is stored together with the ID using a final field
-                    // in the next column for backward-safe parsing.
-                    // This branch is retained below for the 14-field format.
-                } catch (Exception ignored) {
-                    // Ignore a damaged line and continue loading other titles.
-                }
-            }
-
-            // Re-read using the current 14-field format.
-            movies.clear();
-            highestId = 0;
-
-            for (String line : lines) {
-
-                if (line == null || line.isBlank()) {
-                    continue;
-                }
-
-                try {
-                    String[] parts = line.split("\\|", -1);
-
-                    if (parts.length != 14) {
-                        continue;
-                    }
-
-                    int id = Integer.parseInt(parts[0]);
-                    String title = decode(parts[1]);
-                    String genre = decode(parts[2]);
-                    int year = Integer.parseInt(parts[3]);
-                    double rating = Double.parseDouble(parts[4]);
-                    boolean watched = Boolean.parseBoolean(parts[5]);
-                    boolean favorite = Boolean.parseBoolean(parts[6]);
-                    String imageUrl = decode(parts[7]);
-                    String description = decode(parts[8]);
-                    String type = decode(parts[9]);
-                    String region = decode(parts[10]);
-                    int seasons = Integer.parseInt(parts[11]);
-                    int episodes = Integer.parseInt(parts[12]);
-                    int tmdbId = Integer.parseInt(parts[13]);
-
-                    Movie movie = new Movie(
-                            id, title, genre, year, rating,
-                            watched, favorite, imageUrl, description,
-                            type, region, seasons, episodes, tmdbId
-                    );
-
-                    movies.add(movie);
-                    highestId = Math.max(highestId, id);
-
-                } catch (Exception ignored) {
-                    // Ignore a damaged line and continue loading other titles.
-                }
+                movies.add(movie);
+                highestId = Math.max(highestId, id);
             }
 
             nextId = highestId + 1;
 
-        } catch (IOException e) {
-            System.err.println("Could not load saved watchlist: " + e.getMessage());
-        }
-    }
-
-    private void saveToFile() {
-
-        try {
-            Files.createDirectories(DATA_FILE.getParent());
-
-            Path tempFile = Paths.get("data", "watchlist.tmp");
-
-            List<String> lines = new ArrayList<>();
-
-            for (Movie movie : movies) {
-
-                String line =
-                        movie.getId() + "|" +
-                        encode(movie.getTitle()) + "|" +
-                        encode(movie.getGenre()) + "|" +
-                        movie.getYear() + "|" +
-                        movie.getRating() + "|" +
-                        movie.isWatched() + "|" +
-                        movie.isFavorite() + "|" +
-                        encode(movie.getImageUrl()) + "|" +
-                        encode(movie.getDescription()) + "|" +
-                        encode(movie.getType()) + "|" +
-                        encode(movie.getRegion()) + "|" +
-                        movie.getSeasons() + "|" +
-                        movie.getEpisodes() + "|" +
-                        movie.getTmdbId();
-
-                lines.add(line);
-            }
-
-            Files.write(
-                    tempFile,
-                    lines,
-                    StandardCharsets.UTF_8
+            System.out.println(
+                    "Watchlist loaded from MySQL: " + movies.size() + " records"
             );
 
-            try {
-                Files.move(
-                        tempFile,
-                        DATA_FILE,
-                        StandardCopyOption.REPLACE_EXISTING,
-                        StandardCopyOption.ATOMIC_MOVE
-                );
-            } catch (AtomicMoveNotSupportedException e) {
-                Files.move(
-                        tempFile,
-                        DATA_FILE,
-                        StandardCopyOption.REPLACE_EXISTING
-                );
-            }
-
-        } catch (IOException e) {
-            System.err.println("Could not save watchlist: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println(
+                    "Could not load watchlist from database: " + e.getMessage()
+            );
         }
-    }
-
-    private static String encode(String value) {
-        if (value == null) value = "";
-
-        return Base64.getEncoder().encodeToString(
-                value.getBytes(StandardCharsets.UTF_8)
-        );
-    }
-
-    private static String decode(String value) {
-        if (value == null || value.isEmpty()) return "";
-
-        return new String(
-                Base64.getDecoder().decode(value),
-                StandardCharsets.UTF_8
-        );
     }
 }

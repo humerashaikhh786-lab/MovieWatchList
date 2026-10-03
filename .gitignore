@@ -2,3 +2,4 @@ out/
 *.class
 .env
 data/
+lib/*.zip
